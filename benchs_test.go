@@ -180,49 +180,56 @@ func BenchmarkRawUDP(b *testing.B) {
 }
 
 func BenchmarkSample(b *testing.B) {
-    b.StopTimer()
+	b.StopTimer()
 
-    ports, readChan, closeChan, err := testInit(readersCount, false)
-    if err != nil {
-        b.Fatal(err)
-    }
-    _ = readChan
+	ports, readChan, closeChan, err := testInit(readersCount, false)
+	if err != nil {
+		b.Fatal(err)
+	}
+	_ = readChan
 
-    // Open a UDP connection outside the writer function
-    conn, err := net.ListenUDP("udp", &net.UDPAddr{
-        IP:   net.IPv4(127, 0, 0, 1),
-    })
-    if err != nil {
-        b.Fatal(err)
-    }
-    defer conn.Close()
+	writer := func() {
+		conn, err := net.ListenUDP("udp", &net.UDPAddr{
+			IP: net.IPv4(127, 0, 0, 1),
+		})
+		if err != nil {
+			b.Fatal(err)
+		}
+		defer conn.Close()
 
-    // Create a buffer outside the writer function
-    buffer := make([]byte, 1500)
+		buffer := make([]byte, readersCount*1500) // Allocate buffer for all messages
 
-    writer := func() {
-        for i := 0; i < readersCount; i++ {
-            buf := getTestMsg()
+		var offset int
+		for i := 0; i < readersCount; i++ {
+			buf := getTestMsg()
 
-            copy(buffer, buf) 
+			if offset+len(buf) > len(buffer) {
+				b.Fatal("Buffer overflow")
+			}
 
-            _, err := conn.WriteTo(buffer, &net.UDPAddr{
-                IP:   net.IPv4(127, 0, 0, 1),
-                Port: ports[i],
-            })
-            if err != nil {
-                b.Fatal(err)
-            }
-        }
-        waitForReaders(readChan, b)
-    }
+			copy(buffer[offset:], buf) // Copy message to buffer
+			offset += len(buf)
+			_ = ports[i]
+		}
 
-    // Sequential test
-    b.StartTimer()
-    for i := 0; i < b.N; i++ {
-        writer()
-    }
-    b.StopTimer()
+		if offset > 0 {
+			_, err := conn.WriteTo(buffer[:offset], &net.UDPAddr{
+				IP:   net.IPv4(127, 0, 0, 1),
+				Port: ports[readersCount-1], // Send to the last port
+			})
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
 
-    close(closeChan)
+		waitForReaders(readChan, b)
+	}
+
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		writer()
+	}
+	b.StopTimer()
+
+	close(closeChan)
 }
