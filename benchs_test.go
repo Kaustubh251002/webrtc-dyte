@@ -197,6 +197,7 @@ func BenchmarkSample(b *testing.B) {
 		
 		conn, err := net.ListenUDP("udp", &net.UDPAddr{ // Establish connection within writer
 			IP:   net.IPv4(127, 0, 0, 1),
+
 		})
 		if err != nil {
 			b.Fatal(err)
@@ -215,6 +216,7 @@ func BenchmarkSample(b *testing.B) {
 				// Send current buffer and reset offset
 				_, err := conn.WriteTo(buffer[:offset], &net.UDPAddr{
 					IP: net.IPv4(127, 0, 0, 1),
+					Port: ports[i],
 				})
 				if err != nil {
 					b.Fatal(err)
