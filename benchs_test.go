@@ -190,6 +190,8 @@ func BenchmarkSample(b *testing.B) {
 	}
 	_ = readChan
 
+	var conn *net.UDPConn // Declare conn outside the writer function
+
 	writer := func() {
 		// You can modify the following code inside this function
 		// Start of code that you are permitted to modify
@@ -200,11 +202,18 @@ func BenchmarkSample(b *testing.B) {
 			buf := getTestMsg()
 			copy(buffer[offset:offset+len(buf)], buf) // Copy message to buffer
 			offset += len(buf)
-			_ = ports[i]
 		}
 
-		_, err := conn.WriteTo(buffer[:offset], &net.UDPAddr{ // Write entire buffer at once
+		conn, err := net.ListenUDP("udp", &net.UDPAddr{ // Establish connection within writer
 			IP:   net.IPv4(127, 0, 0, 1),
+		})
+		if err != nil {
+			b.Fatal(err)
+		}
+		defer conn.Close() // Close connection after use
+
+		_, err = conn.WriteTo(buffer[:offset], &net.UDPAddr{ // Write entire buffer using conn
+			IP: net.IPv4(127, 0, 0, 1),
 		})
 		if err != nil {
 			b.Fatal(err)
