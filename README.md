@@ -1,5 +1,5 @@
 # UDP Network Writer Challenge
-
+### Disclaimer: prior to this challenge I had next to no knowledge about golang and the intricacies involved in a UDP network.. I still don't fully get it but hey I finished the task! :D
 ## Introduction
 This is a hiring challenge for the intern role for core media team at our company. The goal of this challenge is to write a UDP network writer that performs significantly better than the baseline implementation.
 
