@@ -179,6 +179,8 @@ func BenchmarkRawUDP(b *testing.B) {
 	close(closeChan)
 }
 
+// Implement your benchmarks here -->
+// Please read the comments carefully. You need to implement something atleast much faster than the baseline
 func BenchmarkSample(b *testing.B) {
 	b.StopTimer()
 
@@ -193,20 +195,12 @@ func BenchmarkSample(b *testing.B) {
 	writer := func() {
 		// You can modify the following code inside this function
 		// Start of code that you are permitted to modify
-		buffer := make([]byte, readersCount*1500) // Allocate buffer for all messages
-		offset := 0
-
 		for i := 0; i < readersCount; i++ {
-			buf := getTestMsg()
-			copy(buffer[offset:offset+len(buf)], buf) // Copy message to buffer
-			offset += len(buf)
-		}
+			buf := getTestMsg() // DO NOT EDIT THIS LINE
 
-		_, err := conn.WriteTo(buffer[:offset], &net.UDPAddr{ // Write entire buffer at once
-			IP:   net.IPv4(127, 0, 0, 1),
-		})
-		if err != nil {
-			b.Fatal(err)
+			// DO Something with the buf to write it to the port 'i'
+			_ = ports[i] // Placeholder, Please remove this line
+			_ = buf      // Placeholder, Please remove this line
 		}
 
 		// End of code that you are permitted to modify
