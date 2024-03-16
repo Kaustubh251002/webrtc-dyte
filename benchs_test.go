@@ -180,54 +180,49 @@ func BenchmarkRawUDP(b *testing.B) {
 }
 
 func BenchmarkSample(b *testing.B) {
-	b.StopTimer()
+    b.StopTimer()
 
-	// Do something here
+    ports, readChan, closeChan, err := testInit(readersCount, false)
+    if err != nil {
+        b.Fatal(err)
+    }
+    _ = readChan
 
-	ports, readChan, closeChan, err := testInit(readersCount, false) // DO NOT EDIT THIS LINE
-	if err != nil {
-		b.Fatal(err)
-	}
-	_ = readChan
+    // Open a UDP connection outside the writer function
+    conn, err := net.ListenUDP("udp", &net.UDPAddr{
+        IP:   net.IPv4(127, 0, 0, 1),
+    })
+    if err != nil {
+        b.Fatal(err)
+    }
+    defer conn.Close()
 
-	// Establishing UDP connection outside the writer to avoid connection overhead
-	conn, err := net.ListenUDP("udp", &net.UDPAddr{
-		IP:   net.IPv4(127, 0, 0, 1),
-	})
-	if err != nil {
-		b.Fatal(err)
-	}
-	defer conn.Close() // Close connection after use
+    // Create a buffer outside the writer function
+    buffer := make([]byte, 1500)
 
-	writer := func() {
-		buffer := make([]byte, 1500*readersCount) // this could exceed maximum UDP size
+    writer := func() {
+        for i := 0; i < readersCount; i++ {
+            buf := getTestMsg()
 
-		for i := 0; i < readersCount; i++ {
-			buf := getTestMsg()
+            copy(buffer, buf) 
 
-			// Copy message into its position in the buffer
-			copy(buffer[i*1500:(i+1)*1500], buf)
-		}
+            _, err := conn.WriteTo(buffer, &net.UDPAddr{
+                IP:   net.IPv4(127, 0, 0, 1),
+                Port: ports[i],
+            })
+            if err != nil {
+                b.Fatal(err)
+            }
+        }
+        waitForReaders(readChan, b)
+    }
 
-		for i := 0; i < readersCount; i++ {
-			_, err := conn.WriteTo(buffer[i*1500:(i+1)*1500], &net.UDPAddr{
-				IP:   net.IPv4(127, 0, 0, 1),
-				Port: ports[i],
-			})
-			if err != nil {
-				b.Fatal(err)
-			}
-		}
+    // Sequential test
+    b.StartTimer()
+    for i := 0; i < b.N; i++ {
+        writer()
+    }
+    b.StopTimer()
 
-		waitForReaders(readChan, b)
-	}
-
-	// Sequential test
-	b.StartTimer()
-	for i := 0; i < b.N; i++ {
-		writer()
-	}
-	b.StopTimer()
-
-	close(closeChan)
+    close(closeChan)
 }
