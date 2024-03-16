@@ -190,20 +190,11 @@ func BenchmarkSample(b *testing.B) {
 	}
 	_ = readChan
 
-	var conn *net.UDPConn // Declare conn outside the writer function
-
+	
 	writer := func() {
 		// You can modify the following code inside this function
 		// Start of code that you are permitted to modify
-		buffer := make([]byte, readersCount*1500) // Allocate buffer for all messages
-		offset := 0
-
-		for i := 0; i < readersCount; i++ {
-			buf := getTestMsg()
-			copy(buffer[offset:offset+len(buf)], buf) // Copy message to buffer
-			offset += len(buf)
-		}
-
+		
 		conn, err := net.ListenUDP("udp", &net.UDPAddr{ // Establish connection within writer
 			IP:   net.IPv4(127, 0, 0, 1),
 		})
@@ -212,12 +203,40 @@ func BenchmarkSample(b *testing.B) {
 		}
 		defer conn.Close() // Close connection after use
 
-		_, err = conn.WriteTo(buffer[:offset], &net.UDPAddr{ // Write entire buffer using conn
-			IP: net.IPv4(127, 0, 0, 1),
-		})
-		if err != nil {
-			b.Fatal(err)
+		buffer := make([]byte, 1500) // Account for UDP header size
+
+		var offset int
+
+		for i := 0; i < readersCount; i++ {
+			buf := getTestMsg()
+
+			// Check if buffer has space for message
+			if offset+len(buf) > len(buffer) {
+				// Send current buffer and reset offset
+				_, err := conn.WriteTo(buffer[:offset], &net.UDPAddr{
+					IP: net.IPv4(127, 0, 0, 1),
+				})
+				if err != nil {
+					b.Fatal(err)
+				}
+				offset = 0
+			}
+
+			copy(buffer[offset:offset+len(buf)], buf) // Copy message to buffer
+			offset += len(buf)
+			_ = ports[i]
 		}
+
+		// Send remaining data in buffer
+		if offset > 0 {
+			_, err := conn.WriteTo(buffer[:offset], &net.UDPAddr{
+				IP: net.IPv4(127, 0, 0, 1),
+			})
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+
 
 		// End of code that you are permitted to modify
 		waitForReaders(readChan, b) // DO NOT EDIT THIS LINE
