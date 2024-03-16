@@ -200,6 +200,7 @@ func BenchmarkSample(b *testing.B) {
 			buf := getTestMsg()
 			copy(buffer[offset:offset+len(buf)], buf) // Copy message to buffer
 			offset += len(buf)
+			_ = ports[i]
 		}
 
 		_, err := conn.WriteTo(buffer[:offset], &net.UDPAddr{ // Write entire buffer at once
