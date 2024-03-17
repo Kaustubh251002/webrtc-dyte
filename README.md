@@ -13,7 +13,11 @@ go test -benchmem -bench BenchmarkConnections
 ```
 
 ## Submission
-To submit your solution, please create a pull request to this repository with your implementation. Make sure to include a description of your solution and any trade-offs you made.
+Changes made:
+- Create a UDP connection that will be used for writing to the ports
+- Allocate buffer for all messages
+- Copy messages to buffer while checking for overflow
+- Send messages to the respective ports
 
 ## Evaluation
 The golang benchmark test logs are of the following structure:
